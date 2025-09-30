@@ -5,6 +5,18 @@ import fs from 'fs'
 import path from 'path'
 
 const app = express()
+
+// Serve arquivos estáticos do build
+app.use(express.static(path.join(__dirname, '../dist')))
+app.use('/music', express.static(path.join(__dirname, '../public/music')))
+
+// Rota catch-all para SPA
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/socket.io')) {
+    res.sendFile(path.join(__dirname, '../dist/index.html'))
+  }
+})
+
 const server = createServer(app)
 const io = new Server(server, {
   cors: { origin: "*" }

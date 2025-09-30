@@ -122,8 +122,9 @@ if (playlist.length > 0) {
   console.log(`🎵 Iniciando stream: ${playlist[currentTrack].title} - ${playlist[currentTrack].artist}`)
 }
 
-server.listen(3001, () => {
-  console.log('🚀 Servidor de streaming rodando na porta 3001')
+const PORT = process.env.PORT || 3001
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Servidor de streaming rodando na porta ${PORT}`)
   console.log('🎵 Rádio tocando automaticamente!')
 })
 

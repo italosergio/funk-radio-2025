@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "cd server && npm start",
-    "radio": "concurrently \"npm run server\" \"npm run dev\""
+    "radio": "concurrently \"npm run server\" \"npm run dev\"",
+    "vercel-build": "npm run build"
   },
   "dependencies": {
     "react": "^19.1.1",

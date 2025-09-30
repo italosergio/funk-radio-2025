@@ -14,7 +14,10 @@ function App() {
   const [serverPosition, setServerPosition] = useState(0)
 
   useEffect(() => {
-    socketRef.current = io('http://localhost:3001')
+    const serverUrl = process.env.NODE_ENV === 'production' 
+      ? window.location.origin 
+      : 'http://localhost:3001'
+    socketRef.current = io(serverUrl)
     
     socketRef.current.on('connect', () => {
       setConnected(true)

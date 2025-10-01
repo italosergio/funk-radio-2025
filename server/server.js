@@ -43,12 +43,13 @@ async function loadPlaylist() {
         let cover = null
         let title = file.replace('.mp3', '')
         let artist = null
+        let duration = 180 // fallback padrão
         
         try {
           const metadata = await parseFile(filePath)
           title = metadata.common.title || title
           artist = metadata.common.artist || metadata.common.albumartist || metadata.common.artists?.[0] || null
-          const duration = metadata.format.duration || 180 // fallback 3 minutos
+          duration = metadata.format.duration || 180 // atualiza duration
           console.log(`🎤 ${file}: titulo=${title}, artista=${artist}, duração=${Math.floor(duration)}s`)
           console.log(`📋 Metadados disponiveis:`, Object.keys(metadata.common))
           

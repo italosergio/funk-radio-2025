@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { io } from 'socket.io-client'
+import { HiPlay, HiPause, HiVolumeUp, HiVolumeOff, HiUsers, HiDownload } from 'react-icons/hi'
 import RadioStream from './RadioStream.js'
+import WaveVisualizer from './components/WaveVisualizer.jsx'
+import { useTranslation } from './hooks/useTranslation.js'
 import './App.css'
 
 function App() {
@@ -12,6 +15,11 @@ function App() {
   const socketRef = useRef(null)
   const streamRef = useRef(null)
   const [serverPosition, setServerPosition] = useState(0)
+  const [showOpening, setShowOpening] = useState(true)
+
+  const { t, language, changeLanguage } = useTranslation()
+
+
 
   useEffect(() => {
     const serverUrl = process.env.NODE_ENV === 'production' 
@@ -25,6 +33,9 @@ function App() {
     })
     
     socketRef.current.on('radio-state', async (data) => {
+      console.log('📡 Estado da rádio recebido:', data.track.title)
+      console.log('🎤 Artista:', data.track.artist || 'Não encontrado')
+      console.log('🇺️ Capa da música:', data.track.cover ? 'Presente' : 'Ausente')
       setCurrentTrack(data.track)
       setListeners(data.listeners)
       setServerPosition(data.currentPosition)
@@ -93,41 +104,34 @@ function App() {
     }
   }
 
-
-
-  if (!connected) {
-    return (
-      <div className="radio-app">
-        <h1>🎵 Rádio Funk 2025</h1>
-        <div className="player">
-          <p>Conectando ao servidor...</p>
-        </div>
-      </div>
-    )
+  const downloadCurrentTrack = () => {
+    if (currentTrack) {
+      const link = document.createElement('a')
+      link.href = currentTrack.src
+      link.download = `${currentTrack.title}.mp3`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    }
   }
 
-  if (!currentTrack) {
-    return (
-      <div className="radio-app">
-        <h1>🎵 Rádio Funk 2025</h1>
-        <div className="player">
-          <p>Aguardando programação...</p>
-        </div>
-      </div>
-    )
-  }
 
-  if (!radioStarted) {
+
+  if (!connected || !currentTrack || !radioStarted) {
     return (
-      <div className="radio-app">
-        <h1>🎵 Rádio Funk 2025</h1>
-        <div className="player">
-          <div className="start-screen">
-            <h2>Pronto para começar?</h2>
-            <button onClick={startRadio} className="start-btn">
-              ▶️ Iniciar Rádio
+      <div className="opening-screen">
+        <div className="opening-content">
+          <div className="opening-logo">RÁDIO FUNK</div>
+          <div className="opening-year">2025</div>
+          {!connected ? (
+            <div className="opening-status">{t('connecting')}</div>
+          ) : !currentTrack ? (
+            <div className="opening-status">{t('loading')}</div>
+          ) : (
+            <button onClick={startRadio} className="opening-play-btn">
+              <HiPlay />
             </button>
-          </div>
+          )}
         </div>
       </div>
     )
@@ -135,42 +139,66 @@ function App() {
 
   return (
     <div className="radio-app">
-      <h1>🎵 Rádio Funk 2025</h1>
+      <div className="background-visualizer">
+        <WaveVisualizer 
+          radioStream={streamRef.current} 
+          isPlaying={!isMuted && radioStarted}
+
+        />
+      </div>
       
-      <div className="player">
-        <div className="streaming-info">
-          <div className="live-indicator">
-            <span className="live-dot"></span>
-            AO VIVO
-          </div>
-          <div className="listeners">
-            👥 {listeners} ouvintes
-          </div>
+      <div className="status-bar">
+        <div className="live-indicator">
+          <div className="live-dot"></div>
+          {t('live')}
         </div>
-
-        <div className="track-info">
-          <h2>{currentTrack.title}</h2>
-          <p>{currentTrack.artist}</p>
+        <div className="listeners-count">
+          <HiUsers />
+          {listeners} {t('listeners')}
         </div>
+      </div>
 
-        {/* Web Audio API - sem elemento HTML */}
+      <div className="radio-container">
+        <div className="logo">{t('appName')}</div>
+        
+        <div className="music-info">
+          <div className="album-cover">
+            {currentTrack?.cover ? (
+              <img 
+                src={currentTrack.cover} 
+                alt={`${currentTrack.title} cover`}
+                onLoad={() => console.log('Capa carregada com sucesso')}
+                onError={() => {
+                  console.log('Erro ao carregar capa')
+                  console.log('URL da capa:', currentTrack.cover)
+                }}
+              />
+            ) : (
+              <div className="album-placeholder">
+                🎵
+                <div style={{fontSize: '0.8rem', marginTop: '10px', opacity: 0.5}}>Sem capa</div>
+              </div>
+            )}
+          </div>
 
-        <div className="controls">
-          <button onClick={toggleMute} className="play-btn">
-            {isMuted ? '🔊 Ativar Som' : '🔇 Mutar'}
+          <div className="track-info">
+            <div className="track-title">{currentTrack.title}</div>
+            {currentTrack.artist && (
+              <div className="track-artist">{currentTrack.artist}</div>
+            )}
+          </div>
+          
+          <button className="download-btn-discrete" onClick={downloadCurrentTrack}>
+            <HiDownload />
           </button>
         </div>
 
-        <div className="playlist">
-          <h3>🎵 Rádio Funk 2025 - AO VIVO</h3>
-          <div className="now-playing">
-            <strong>TOCANDO AGORA:</strong> {currentTrack.title} - {currentTrack.artist}
-          </div>
-          <div className="stream-info">
-            <p>📡 Streaming em tempo real</p>
-            <p>🔄 Música muda automaticamente</p>
-          </div>
+        <div className="controls">
+          <button onClick={toggleMute} className="control-btn primary">
+            {isMuted ? <HiVolumeOff /> : <HiVolumeUp />}
+          </button>
         </div>
+
       </div>
     </div>
   )

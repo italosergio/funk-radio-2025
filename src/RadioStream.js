@@ -45,9 +45,18 @@ class RadioStream {
         this.source.disconnect()
       }
 
+      // Criar analyser para visualização
+      this.analyser = this.audioContext.createAnalyser()
+      this.analyser.fftSize = 256
+      this.analyser.smoothingTimeConstant = 0.8
+
       this.source = this.audioContext.createBufferSource()
       this.source.buffer = this.audioBuffer
-      this.source.connect(this.gainNode)
+      
+      // Conectar: source -> analyser -> gainNode -> destination
+      this.source.connect(this.analyser)
+      this.analyser.connect(this.gainNode)
+      
       this.source.loop = true
       
       const when = this.audioContext.currentTime
@@ -88,6 +97,10 @@ class RadioStream {
       this.gainNode.gain.value = 1
       console.log('🔊 Stream desmutado')
     }
+  }
+
+  getAnalyser() {
+    return this.analyser
   }
 
   getCurrentTime() {

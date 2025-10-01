@@ -4,6 +4,7 @@ import { Server } from 'socket.io'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { parseFile } from 'music-metadata'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -30,19 +31,55 @@ let playlist = []
 let currentTrack = 0
 let listeners = 0
 
-// Carrega playlist
-function loadPlaylist() {
+// Carrega playlist com metadados
+async function loadPlaylist() {
   try {
     const files = fs.readdirSync(MUSIC_DIR)
-    playlist = files
-      .filter(file => file.endsWith('.mp3'))
-      .map((file, index) => ({
-        id: index + 1,
-        title: file.replace('.mp3', '').replace(/^.*? - /, ''),
-        artist: file.includes(' - ') ? file.split(' - ')[0] : 'Artista',
-        src: `/music/${file}`,
-        file: file
-      }))
+    const mp3Files = files.filter(file => file.endsWith('.mp3'))
+    
+    playlist = await Promise.all(
+      mp3Files.map(async (file, index) => {
+        const filePath = path.join(MUSIC_DIR, file)
+        let cover = null
+        let title = file.replace('.mp3', '')
+        let artist = null
+        
+        try {
+          const metadata = await parseFile(filePath)
+          title = metadata.common.title || title
+          artist = metadata.common.artist || metadata.common.albumartist || metadata.common.artists?.[0] || null
+          console.log(`🎤 ${file}: titulo=${title}, artista=${artist}`)
+          console.log(`📋 Metadados disponiveis:`, Object.keys(metadata.common))
+          
+          // Extrair capa dos metadados
+          if (metadata.common.picture && metadata.common.picture.length > 0) {
+            const picture = metadata.common.picture[0]
+            // Limitar tamanho da imagem (max 500KB)
+            if (picture.data.length < 500000) {
+              const base64 = Buffer.from(picture.data).toString('base64')
+              cover = `data:${picture.format};base64,${base64}`
+              console.log(`🇺️ Capa encontrada para ${file}: ${picture.format} (${Math.round(picture.data.length/1024)}KB)`)
+            } else {
+              console.log(`⚠️ Capa muito grande para ${file}: ${Math.round(picture.data.length/1024)}KB`)
+            }
+          } else {
+            console.log(`❌ Nenhuma capa encontrada para ${file}`)
+          }
+        } catch (metaError) {
+          console.log(`⚠️ Erro ao ler metadados de ${file}:`, metaError.message)
+        }
+        
+        return {
+          id: index + 1,
+          title,
+          artist,
+          src: `/music/${file}`,
+          file: file,
+          cover
+        }
+      })
+    )
+    
     console.log(`📻 Playlist carregada: ${playlist.length} músicas`)
   } catch (error) {
     console.log('❌ Erro ao carregar playlist:', error.message)
@@ -58,7 +95,7 @@ function nextTrack() {
     currentTrack = (currentTrack + 1) % playlist.length
     trackStartTime = Date.now()
     const track = playlist[currentTrack]
-    console.log(`🎵 Tocando: ${track.title} - ${track.artist}`)
+    console.log(`🎵 Tocando: ${track.title}`)
     
     // Envia nova música para todos
     io.emit('track-change', {
@@ -131,10 +168,10 @@ io.on('connection', (socket) => {
 })
 
 // Inicia servidor
-loadPlaylist()
+await loadPlaylist()
 if (playlist.length > 0) {
   trackStartTime = Date.now()
-  console.log(`🎵 Iniciando stream: ${playlist[currentTrack].title} - ${playlist[currentTrack].artist}`)
+  console.log(`🎵 Iniciando stream: ${playlist[currentTrack].title}`)
 }
 
 const PORT = process.env.PORT || 3001

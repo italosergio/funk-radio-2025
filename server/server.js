@@ -115,10 +115,9 @@ function nextTrack() {
       serverTime: Date.now()
     })
     
-    // Agenda próxima música 1s antes do fim para crossfade suave
-    const nextTrackDelay = Math.max(durationMs - 1000, 1000)
-    currentTrackTimer = setTimeout(nextTrack, nextTrackDelay)
-    console.log(`⏰ Próxima música em ${Math.floor(nextTrackDelay/1000)}s (crossfade)`)
+    // Agenda próxima música na duração completa
+    currentTrackTimer = setTimeout(nextTrack, durationMs)
+    console.log(`⏰ Próxima música em ${Math.floor(durationMs/1000)}s`)
   }
 }
 
@@ -191,10 +190,10 @@ if (playlist.length > 0) {
   const firstTrack = playlist[currentTrack]
   console.log(`🎵 Iniciando stream: ${firstTrack.title} (${Math.floor(firstTrack.duration)}s)`)
   
-  // Agenda primeira troca com crossfade
-  const firstDelay = Math.max(firstTrack.duration * 1000 - 1000, 1000)
+  // Agenda primeira troca na duração completa
+  const firstDelay = firstTrack.duration * 1000
   currentTrackTimer = setTimeout(nextTrack, firstDelay)
-  console.log(`⏰ Primeira troca em ${Math.floor(firstDelay/1000)}s (crossfade)`)
+  console.log(`⏰ Primeira troca em ${Math.floor(firstDelay/1000)}s`)
 }
 
 const PORT = process.env.PORT || 3001

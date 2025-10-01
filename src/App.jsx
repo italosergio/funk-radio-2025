@@ -65,6 +65,11 @@ function App() {
             if (played) {
               console.log('✅ Nova música tocando!')
               updateMediaSession(data.track)
+              // Sincronizar audio element
+              if (audioRef.current) {
+                audioRef.current.currentTime = 0
+                audioRef.current.play().catch(() => {})
+              }
             } else {
               console.error('❌ Falha ao tocar nova música')
             }
@@ -121,14 +126,14 @@ function App() {
       streamRef.current.unmute()
       setIsMuted(false)
       if (audioRef.current) {
-        audioRef.current.muted = true
+        audioRef.current.volume = 0.01
         audioRef.current.play().catch(() => {})
       }
     } else {
       streamRef.current.mute()
       setIsMuted(true)
       if (audioRef.current) {
-        audioRef.current.muted = true
+        audioRef.current.volume = 0.01
         audioRef.current.pause()
       }
     }
@@ -147,10 +152,10 @@ function App() {
 
   const updateMediaSession = (track) => {
     if ('mediaSession' in navigator && audioRef.current) {
-      // Configura o audio element oculto (sempre mudo)
+      // Configura o audio element oculto (volume baixo)
       audioRef.current.src = track.src
       audioRef.current.currentTime = serverPosition
-      audioRef.current.muted = true
+      audioRef.current.volume = 0.01
       
       if (!isMuted) {
         audioRef.current.play().catch(() => {})
@@ -165,7 +170,7 @@ function App() {
       
       navigator.mediaSession.setActionHandler('play', () => {
         if (audioRef.current) {
-          audioRef.current.muted = true
+          audioRef.current.volume = 0.01
           audioRef.current.play()
         }
         if (streamRef.current && isMuted) {
@@ -175,7 +180,7 @@ function App() {
       
       navigator.mediaSession.setActionHandler('pause', () => {
         if (audioRef.current) {
-          audioRef.current.muted = true
+          audioRef.current.volume = 0.01
           audioRef.current.pause()
         }
         if (streamRef.current && !isMuted) {
@@ -214,7 +219,7 @@ function App() {
         ref={audioRef}
         style={{ display: 'none' }}
         preload="none"
-        muted
+        volume={0.01}
         onPlay={() => console.log('Audio element playing')}
         onPause={() => console.log('Audio element paused')}
       />

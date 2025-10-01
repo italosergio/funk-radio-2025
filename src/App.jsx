@@ -16,6 +16,7 @@ function App() {
   const streamRef = useRef(null)
   const [serverPosition, setServerPosition] = useState(0)
   const [showOpening, setShowOpening] = useState(true)
+  const audioRef = useRef(null)
 
   const { t, language, changeLanguage } = useTranslation()
 
@@ -119,14 +120,14 @@ function App() {
     if (isMuted) {
       streamRef.current.unmute()
       setIsMuted(false)
-      if ('mediaSession' in navigator) {
-        navigator.mediaSession.playbackState = 'playing'
+      if (audioRef.current) {
+        audioRef.current.play().catch(() => {})
       }
     } else {
       streamRef.current.mute()
       setIsMuted(true)
-      if ('mediaSession' in navigator) {
-        navigator.mediaSession.playbackState = 'paused'
+      if (audioRef.current) {
+        audioRef.current.pause()
       }
     }
   }
@@ -143,7 +144,15 @@ function App() {
   }
 
   const updateMediaSession = (track) => {
-    if ('mediaSession' in navigator) {
+    if ('mediaSession' in navigator && audioRef.current) {
+      // Configura o audio element oculto
+      audioRef.current.src = track.src
+      audioRef.current.currentTime = serverPosition
+      
+      if (!isMuted) {
+        audioRef.current.play().catch(() => {})
+      }
+      
       navigator.mediaSession.metadata = new MediaMetadata({
         title: track.title,
         artist: track.artist || 'Funk Radio',
@@ -152,18 +161,22 @@ function App() {
       })
       
       navigator.mediaSession.setActionHandler('play', () => {
+        if (audioRef.current) {
+          audioRef.current.play()
+        }
         if (streamRef.current && isMuted) {
           toggleMute()
         }
       })
       
       navigator.mediaSession.setActionHandler('pause', () => {
+        if (audioRef.current) {
+          audioRef.current.pause()
+        }
         if (streamRef.current && !isMuted) {
           toggleMute()
         }
       })
-      
-      navigator.mediaSession.playbackState = isMuted ? 'paused' : 'playing'
     }
   }
 
@@ -191,6 +204,15 @@ function App() {
 
   return (
     <div className="radio-app">
+      {/* Audio element oculto para Media Session API */}
+      <audio 
+        ref={audioRef}
+        style={{ display: 'none' }}
+        preload="none"
+        onPlay={() => console.log('Audio element playing')}
+        onPause={() => console.log('Audio element paused')}
+      />
+      
       <div className="background-visualizer">
         <WaveVisualizer 
           radioStream={streamRef.current} 

@@ -138,6 +138,7 @@ function App() {
         streamRef.current.mute()
       }
       
+      setupMediaSession()
       updateMediaSession(currentTrack)
     }
   }
@@ -171,45 +172,37 @@ function App() {
     }
   }
 
-  const updateMediaSession = (track) => {
-    if ('mediaSession' in navigator && audioRef.current) {
-      // Configura o audio element oculto (volume baixo)
-      audioRef.current.src = track.src
-      audioRef.current.currentTime = serverPosition
-      audioRef.current.volume = 0.01
-      
-      if (!isMuted) {
-        audioRef.current.play().catch(() => {})
-      }
-      
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: track.title,
-        artist: track.artist || 'Funk Radio',
-        album: 'Funk Radio 2025',
-        artwork: track.cover ? [{ src: track.cover, sizes: '512x512', type: 'image/jpeg' }] : []
-      })
-      
+  const setupMediaSession = () => {
+    if ('mediaSession' in navigator) {
       navigator.mediaSession.setActionHandler('play', () => {
         console.log('📱 Botão play pressionado na tela de bloqueio')
+        console.log('🔊 Estado atual isMuted:', isMuted)
+        
         if (audioRef.current) {
           audioRef.current.volume = 0.01
           audioRef.current.play()
         }
-        if (streamRef.current && isMuted) {
+        
+        if (streamRef.current) {
           streamRef.current.unmute()
           setIsMuted(false)
+          console.log('✅ Desmutado via player externo')
         }
       })
       
       navigator.mediaSession.setActionHandler('pause', () => {
         console.log('📱 Botão pause pressionado na tela de bloqueio')
+        console.log('🔇 Estado atual isMuted:', isMuted)
+        
         if (audioRef.current) {
           audioRef.current.volume = 0.01
           audioRef.current.pause()
         }
-        if (streamRef.current && !isMuted) {
+        
+        if (streamRef.current) {
           streamRef.current.mute()
           setIsMuted(true)
+          console.log('✅ Mutado via player externo')
         }
       })
       
@@ -219,6 +212,29 @@ function App() {
       navigator.mediaSession.setActionHandler('seekto', null)
       navigator.mediaSession.setActionHandler('previoustrack', null)
       navigator.mediaSession.setActionHandler('nexttrack', null)
+    }
+  }
+
+  const updateMediaSession = (track) => {
+    if ('mediaSession' in navigator && audioRef.current) {
+      // Configura o audio element oculto (volume baixo)
+      audioRef.current.src = track.src
+      audioRef.current.currentTime = serverPosition
+      audioRef.current.volume = 0.01
+      
+      // Respeita estado de mute atual
+      if (!isMuted) {
+        audioRef.current.play().catch(() => {})
+      } else {
+        audioRef.current.pause()
+      }
+      
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: track.title,
+        artist: track.artist || 'Funk Radio',
+        album: 'Funk Radio 2025',
+        artwork: track.cover ? [{ src: track.cover, sizes: '512x512', type: 'image/jpeg' }] : []
+      })
     }
   }
 

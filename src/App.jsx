@@ -63,6 +63,7 @@ function App() {
             const played = await streamRef.current.play(0)
             if (played) {
               console.log('✅ Nova música tocando!')
+              updateMediaSession(data.track)
             } else {
               console.error('❌ Falha ao tocar nova música')
             }
@@ -110,6 +111,7 @@ function App() {
     if (currentTrack) {
       await streamRef.current.loadTrack(currentTrack.src)
       await streamRef.current.play(serverPosition)
+      updateMediaSession(currentTrack)
     }
   }
 
@@ -117,9 +119,15 @@ function App() {
     if (isMuted) {
       streamRef.current.unmute()
       setIsMuted(false)
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'playing'
+      }
     } else {
       streamRef.current.mute()
       setIsMuted(true)
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'paused'
+      }
     }
   }
 
@@ -131,6 +139,31 @@ function App() {
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
+    }
+  }
+
+  const updateMediaSession = (track) => {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: track.title,
+        artist: track.artist || 'Funk Radio',
+        album: 'Funk Radio 2025',
+        artwork: track.cover ? [{ src: track.cover, sizes: '512x512', type: 'image/jpeg' }] : []
+      })
+      
+      navigator.mediaSession.setActionHandler('play', () => {
+        if (streamRef.current && isMuted) {
+          toggleMute()
+        }
+      })
+      
+      navigator.mediaSession.setActionHandler('pause', () => {
+        if (streamRef.current && !isMuted) {
+          toggleMute()
+        }
+      })
+      
+      navigator.mediaSession.playbackState = isMuted ? 'paused' : 'playing'
     }
   }
 

@@ -5,18 +5,110 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { parseFile } from 'music-metadata'
+import session from 'express-session'
+import cors from 'cors'
+import passport from 'passport'
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const app = express()
 
+// Sistema de usuários em memória (simples)
+const users = new Map()
+
+// Configuração do Passport
+passport.use(new GoogleStrategy({
+  clientID: process.env.GOOGLE_CLIENT_ID || 'demo-client-id',
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'demo-client-secret',
+  callbackURL: "/auth/google/callback"
+}, async (accessToken, refreshToken, profile, done) => {
+  try {
+    let user = users.get(profile.id)
+    
+    if (user) {
+      user.lastLogin = new Date()
+      user.isOnline = true
+      return done(null, user)
+    }
+    
+    user = {
+      id: profile.id,
+      googleId: profile.id,
+      email: profile.emails[0].value,
+      name: profile.displayName,
+      picture: profile.photos[0].value,
+      locale: profile._json.locale,
+      verified_email: profile._json.verified_email,
+      given_name: profile._json.given_name,
+      family_name: profile._json.family_name,
+      createdAt: new Date(),
+      lastLogin: new Date(),
+      isOnline: true
+    }
+    
+    users.set(profile.id, user)
+    console.log('👤 Novo usuário registrado:', user.name)
+    done(null, user)
+  } catch (error) {
+    done(error, null)
+  }
+}))
+
+passport.serializeUser((user, done) => {
+  done(null, user.id)
+})
+
+passport.deserializeUser((id, done) => {
+  const user = users.get(id)
+  done(null, user)
+})
+
+// Middleware
+app.use(cors({ origin: true, credentials: true }))
+app.use(express.json())
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'funk-radio-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 }
+}))
+app.use(passport.initialize())
+app.use(passport.session())
+
 // Serve arquivos estáticos do build
 app.use(express.static(path.join(__dirname, '../dist')))
 app.use('/music', express.static(path.join(__dirname, '../public/music')))
 
+// Rotas de autenticação
+app.get('/auth/google', passport.authenticate('google', {
+  scope: ['profile', 'email']
+}))
+
+app.get('/auth/google/callback', 
+  passport.authenticate('google', { failureRedirect: '/' }),
+  (req, res) => {
+    res.redirect('/?login=success')
+  }
+)
+
+app.get('/auth/user', (req, res) => {
+  if (req.user) {
+    res.json({ user: req.user, authenticated: true })
+  } else {
+    res.json({ authenticated: false })
+  }
+})
+
+app.post('/auth/logout', (req, res) => {
+  req.logout(() => {
+    res.json({ success: true })
+  })
+})
+
 // Rota catch-all para SPA
 app.get('*', (req, res) => {
-  if (!req.path.startsWith('/socket.io')) {
+  if (!req.path.startsWith('/socket.io') && !req.path.startsWith('/auth')) {
     res.sendFile(path.join(__dirname, '../dist/index.html'))
   }
 })

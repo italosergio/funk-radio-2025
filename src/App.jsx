@@ -3,6 +3,7 @@ import { io } from 'socket.io-client'
 import { HiPlay, HiPause, HiVolumeUp, HiVolumeOff, HiUsers, HiDownload } from 'react-icons/hi'
 import RadioStream from './RadioStream.js'
 import WaveVisualizer from './components/WaveVisualizer.jsx'
+import LoginModal from './components/LoginModal.jsx'
 import { useTranslation } from './hooks/useTranslation.js'
 import './App.css'
 
@@ -17,8 +18,32 @@ function App() {
   const [serverPosition, setServerPosition] = useState(0)
   const [showOpening, setShowOpening] = useState(true)
   const audioRef = useRef(null)
+  const [user, setUser] = useState(null)
+  const [showLoginModal, setShowLoginModal] = useState(false)
 
   const { t, language, changeLanguage } = useTranslation()
+
+  const checkAuth = async () => {
+    try {
+      const response = await fetch('/auth/user', { credentials: 'include' })
+      const data = await response.json()
+      if (data.authenticated) {
+        setUser(data.user)
+      }
+    } catch (error) {
+      console.log('Erro ao verificar autenticação:', error)
+    }
+  }
+
+  const handleListenersClick = () => {
+    if (user) {
+      // Usuário já logado, mostrar perfil ou ações
+      console.log('Usuário logado:', user.name)
+    } else {
+      // Mostrar modal de login
+      setShowLoginModal(true)
+    }
+  }
 
 
 
@@ -119,6 +144,10 @@ function App() {
     })
     
     return () => socketRef.current?.disconnect()
+  }, [])
+
+  useEffect(() => {
+    checkAuth()
   }, [])
 
   const startRadio = async () => {
@@ -294,7 +323,7 @@ function App() {
           <div className="live-dot"></div>
           {t('live')}
         </div>
-        <div className="listeners-count">
+        <div className="listeners-count" onClick={handleListenersClick}>
           <HiUsers />
           {listeners} {t('listeners')}
         </div>
@@ -342,6 +371,11 @@ function App() {
         </div>
 
       </div>
+      
+      <LoginModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)} 
+      />
     </div>
   )
 }

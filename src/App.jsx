@@ -121,12 +121,14 @@ function App() {
       streamRef.current.unmute()
       setIsMuted(false)
       if (audioRef.current) {
+        audioRef.current.muted = true
         audioRef.current.play().catch(() => {})
       }
     } else {
       streamRef.current.mute()
       setIsMuted(true)
       if (audioRef.current) {
+        audioRef.current.muted = true
         audioRef.current.pause()
       }
     }
@@ -145,9 +147,10 @@ function App() {
 
   const updateMediaSession = (track) => {
     if ('mediaSession' in navigator && audioRef.current) {
-      // Configura o audio element oculto
+      // Configura o audio element oculto (sempre mudo)
       audioRef.current.src = track.src
       audioRef.current.currentTime = serverPosition
+      audioRef.current.muted = true
       
       if (!isMuted) {
         audioRef.current.play().catch(() => {})
@@ -162,6 +165,7 @@ function App() {
       
       navigator.mediaSession.setActionHandler('play', () => {
         if (audioRef.current) {
+          audioRef.current.muted = true
           audioRef.current.play()
         }
         if (streamRef.current && isMuted) {
@@ -171,6 +175,7 @@ function App() {
       
       navigator.mediaSession.setActionHandler('pause', () => {
         if (audioRef.current) {
+          audioRef.current.muted = true
           audioRef.current.pause()
         }
         if (streamRef.current && !isMuted) {
@@ -209,6 +214,7 @@ function App() {
         ref={audioRef}
         style={{ display: 'none' }}
         preload="none"
+        muted
         onPlay={() => console.log('Audio element playing')}
         onPause={() => console.log('Audio element paused')}
       />

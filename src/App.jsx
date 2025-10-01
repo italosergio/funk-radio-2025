@@ -45,6 +45,11 @@ function App() {
       if (radioStarted && streamRef.current) {
         await streamRef.current.loadTrack(data.track.src)
         await streamRef.current.play(data.currentPosition)
+        
+        // Aplicar estado de mute se necessário
+        if (isMuted) {
+          streamRef.current.mute()
+        }
       }
     })
     
@@ -65,10 +70,20 @@ function App() {
             if (played) {
               console.log('✅ Nova música tocando!')
               updateMediaSession(data.track)
+              
+              // Aplicar estado de mute se necessário
+              if (isMuted && streamRef.current) {
+                streamRef.current.mute()
+              }
+              
               // Sincronizar audio element
               if (audioRef.current) {
                 audioRef.current.currentTime = 0
-                audioRef.current.play().catch(() => {})
+                if (!isMuted) {
+                  audioRef.current.play().catch(() => {})
+                } else {
+                  audioRef.current.pause()
+                }
               }
             } else {
               console.error('❌ Falha ao tocar nova música')
@@ -117,6 +132,12 @@ function App() {
     if (currentTrack) {
       await streamRef.current.loadTrack(currentTrack.src)
       await streamRef.current.play(serverPosition)
+      
+      // Aplicar estado de mute se necessário
+      if (isMuted) {
+        streamRef.current.mute()
+      }
+      
       updateMediaSession(currentTrack)
     }
   }
@@ -169,24 +190,35 @@ function App() {
       })
       
       navigator.mediaSession.setActionHandler('play', () => {
+        console.log('📱 Botão play pressionado na tela de bloqueio')
         if (audioRef.current) {
           audioRef.current.volume = 0.01
           audioRef.current.play()
         }
         if (streamRef.current && isMuted) {
-          toggleMute()
+          streamRef.current.unmute()
+          setIsMuted(false)
         }
       })
       
       navigator.mediaSession.setActionHandler('pause', () => {
+        console.log('📱 Botão pause pressionado na tela de bloqueio')
         if (audioRef.current) {
           audioRef.current.volume = 0.01
           audioRef.current.pause()
         }
         if (streamRef.current && !isMuted) {
-          toggleMute()
+          streamRef.current.mute()
+          setIsMuted(true)
         }
       })
+      
+      // Desabilitar controles de posição para remover barra de progresso
+      navigator.mediaSession.setActionHandler('seekbackward', null)
+      navigator.mediaSession.setActionHandler('seekforward', null)
+      navigator.mediaSession.setActionHandler('seekto', null)
+      navigator.mediaSession.setActionHandler('previoustrack', null)
+      navigator.mediaSession.setActionHandler('nexttrack', null)
     }
   }
 
@@ -222,6 +254,15 @@ function App() {
         volume={0.01}
         onPlay={() => console.log('Audio element playing')}
         onPause={() => console.log('Audio element paused')}
+        onLoadedMetadata={() => {
+          // Remove duração para evitar barra de progresso
+          if (audioRef.current) {
+            Object.defineProperty(audioRef.current, 'duration', {
+              value: Infinity,
+              writable: false
+            })
+          }
+        }}
       />
       
       <div className="background-visualizer">

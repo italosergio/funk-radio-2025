@@ -7,6 +7,8 @@ class RadioStream {
     this.audioBuffer = null
     this.startTime = 0
     this.offsetTime = 0
+    this.nextSource = null
+    this.nextGainNode = null
   }
 
   async init() {
@@ -40,38 +42,93 @@ class RadioStream {
         return false
       }
 
-      if (this.source) {
-        this.source.stop()
-        this.source.disconnect()
+      // Crossfade suave se já há uma música tocando
+      if (this.source && this.isPlaying) {
+        this.crossfadeToNew(startPosition)
+        return true
       }
 
-      // Criar analyser para visualização
-      this.analyser = this.audioContext.createAnalyser()
-      this.analyser.fftSize = 256
-      this.analyser.smoothingTimeConstant = 0.8
-
-      this.source = this.audioContext.createBufferSource()
-      this.source.buffer = this.audioBuffer
-      
-      // Conectar: source -> analyser -> gainNode -> destination
-      this.source.connect(this.analyser)
-      this.analyser.connect(this.gainNode)
-      
-      this.source.loop = true
-      
-      const when = this.audioContext.currentTime
-      this.source.start(when, startPosition)
-      
-      this.startTime = when
-      this.offsetTime = startPosition
-      this.isPlaying = true
-      
-      console.log(`▶️ Tocando a partir de ${Math.floor(startPosition)}s`)
+      // Primeira música ou não há música tocando
+      this.startNewTrack(startPosition)
       return true
     } catch (error) {
       console.error('❌ Erro ao tocar:', error)
       return false
     }
+  }
+
+  startNewTrack(startPosition = 0) {
+    // Criar analyser para visualização
+    this.analyser = this.audioContext.createAnalyser()
+    this.analyser.fftSize = 256
+    this.analyser.smoothingTimeConstant = 0.8
+
+    this.source = this.audioContext.createBufferSource()
+    this.source.buffer = this.audioBuffer
+    
+    // Conectar: source -> analyser -> gainNode -> destination
+    this.source.connect(this.analyser)
+    this.analyser.connect(this.gainNode)
+    
+    this.source.onended = () => {
+      console.log('🎵 Música terminou, aguardando próxima do servidor')
+      this.isPlaying = false
+    }
+    
+    const when = this.audioContext.currentTime
+    this.source.start(when, startPosition)
+    
+    this.startTime = when
+    this.offsetTime = startPosition
+    this.isPlaying = true
+    
+    console.log(`▶️ Tocando a partir de ${Math.floor(startPosition)}s`)
+  }
+
+  crossfadeToNew(startPosition = 0) {
+    const crossfadeDuration = 1.0 // 1 segundo de crossfade
+    const now = this.audioContext.currentTime
+    
+    // Fade out da música atual
+    this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, now)
+    this.gainNode.gain.linearRampToValueAtTime(0, now + crossfadeDuration)
+    
+    // Criar nova música com fade in
+    this.nextGainNode = this.audioContext.createGain()
+    this.nextGainNode.gain.setValueAtTime(0, now)
+    this.nextGainNode.gain.linearRampToValueAtTime(1, now + crossfadeDuration)
+    this.nextGainNode.connect(this.audioContext.destination)
+    
+    this.nextSource = this.audioContext.createBufferSource()
+    this.nextSource.buffer = this.audioBuffer
+    
+    // Conectar nova música
+    this.nextSource.connect(this.analyser)
+    this.analyser.connect(this.nextGainNode)
+    
+    this.nextSource.onended = () => {
+      console.log('🎵 Música terminou, aguardando próxima do servidor')
+      this.isPlaying = false
+    }
+    
+    this.nextSource.start(now, startPosition)
+    
+    // Para a música atual e troca referências após o crossfade
+    setTimeout(() => {
+      if (this.source) {
+        this.source.stop()
+        this.source.disconnect()
+      }
+      this.source = this.nextSource
+      this.gainNode = this.nextGainNode
+      this.nextSource = null
+      this.nextGainNode = null
+    }, crossfadeDuration * 1000)
+    
+    this.startTime = now
+    this.offsetTime = startPosition
+    
+    console.log(`🔄 Crossfade para nova música (${crossfadeDuration}s)`)
   }
 
   stop() {

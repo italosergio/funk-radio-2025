@@ -48,7 +48,8 @@ async function loadPlaylist() {
           const metadata = await parseFile(filePath)
           title = metadata.common.title || title
           artist = metadata.common.artist || metadata.common.albumartist || metadata.common.artists?.[0] || null
-          console.log(`🎤 ${file}: titulo=${title}, artista=${artist}`)
+          const duration = metadata.format.duration || 180 // fallback 3 minutos
+          console.log(`🎤 ${file}: titulo=${title}, artista=${artist}, duração=${Math.floor(duration)}s`)
           console.log(`📋 Metadados disponiveis:`, Object.keys(metadata.common))
           
           // Extrair capa dos metadados
@@ -75,7 +76,8 @@ async function loadPlaylist() {
           artist,
           src: `/music/${file}`,
           file: file,
-          cover
+          cover,
+          duration: duration || 180
         }
       })
     )
@@ -87,15 +89,22 @@ async function loadPlaylist() {
 }
 
 let trackStartTime = Date.now()
-let trackDuration = 180000 // 3 minutos
+let currentTrackTimer = null
 
-// Simula mudança de música
+// Mudança de música baseada na duração real
 function nextTrack() {
   if (playlist.length > 0) {
+    // Limpa timer anterior se existir
+    if (currentTrackTimer) {
+      clearTimeout(currentTrackTimer)
+    }
+    
     currentTrack = (currentTrack + 1) % playlist.length
     trackStartTime = Date.now()
     const track = playlist[currentTrack]
-    console.log(`🎵 Tocando: ${track.title}`)
+    const durationMs = track.duration * 1000
+    
+    console.log(`🎵 Tocando: ${track.title} (${Math.floor(track.duration)}s)`)
     
     // Envia nova música para todos
     io.emit('track-change', {
@@ -104,13 +113,20 @@ function nextTrack() {
       startTime: trackStartTime,
       serverTime: Date.now()
     })
+    
+    // Agenda próxima música 1s antes do fim para crossfade suave
+    const nextTrackDelay = Math.max(durationMs - 1000, 1000)
+    currentTrackTimer = setTimeout(nextTrack, nextTrackDelay)
+    console.log(`⏰ Próxima música em ${Math.floor(nextTrackDelay/1000)}s (crossfade)`)
   }
 }
 
 // Calcula posição atual da música
 function getCurrentPosition() {
+  if (playlist.length === 0) return 0
   const elapsed = Date.now() - trackStartTime
-  return Math.min(elapsed / 1000, trackDuration / 1000)
+  const currentDuration = playlist[currentTrack].duration
+  return Math.min(elapsed / 1000, currentDuration)
 }
 
 // Conexões WebSocket
@@ -171,7 +187,13 @@ io.on('connection', (socket) => {
 await loadPlaylist()
 if (playlist.length > 0) {
   trackStartTime = Date.now()
-  console.log(`🎵 Iniciando stream: ${playlist[currentTrack].title}`)
+  const firstTrack = playlist[currentTrack]
+  console.log(`🎵 Iniciando stream: ${firstTrack.title} (${Math.floor(firstTrack.duration)}s)`)
+  
+  // Agenda primeira troca com crossfade
+  const firstDelay = Math.max(firstTrack.duration * 1000 - 1000, 1000)
+  currentTrackTimer = setTimeout(nextTrack, firstDelay)
+  console.log(`⏰ Primeira troca em ${Math.floor(firstDelay/1000)}s (crossfade)`)
 }
 
 const PORT = process.env.PORT || 3001
@@ -180,5 +202,4 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log('🎵 Rádio tocando automaticamente!')
 })
 
-// Simula troca de música a cada 3 minutos
-setInterval(nextTrack, trackDuration)
+// Músicas agora trocam automaticamente baseadas na duração real

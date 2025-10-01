@@ -43,7 +43,7 @@ function App() {
       // Se já iniciou, carrega e toca
       if (radioStarted && streamRef.current) {
         await streamRef.current.loadTrack(data.track.src)
-        streamRef.current.play(data.currentPosition)
+        await streamRef.current.play(data.currentPosition)
       }
     })
     
@@ -53,19 +53,27 @@ function App() {
       setListeners(data.listeners)
       setServerPosition(0)
       
-      if (radioStarted && streamRef.current) {
+      // SEMPRE tenta tocar nova música, independente do estado
+      if (streamRef.current) {
         try {
           console.log('🎵 Carregando nova música...')
           const loaded = await streamRef.current.loadTrack(data.track.src)
           if (loaded) {
-            console.log('▶️ Tocando nova música...')
-            streamRef.current.play(0)
+            console.log('▶️ Forçando reprodução da nova música...')
+            const played = await streamRef.current.play(0)
+            if (played) {
+              console.log('✅ Nova música tocando!')
+            } else {
+              console.error('❌ Falha ao tocar nova música')
+            }
           } else {
             console.error('❌ Falha ao carregar música')
           }
         } catch (error) {
           console.error('❌ Erro ao trocar música:', error)
         }
+      } else {
+        console.error('❌ StreamRef não existe!')
       }
     })
     
@@ -83,7 +91,7 @@ function App() {
           await streamRef.current.loadTrack(currentTrack.src)
         }
         
-        streamRef.current.play(data.currentPosition)
+        await streamRef.current.play(data.currentPosition)
         console.log('✅ Stream reconectado!')
       }
     })
@@ -101,7 +109,7 @@ function App() {
     // Carrega e toca na posição atual
     if (currentTrack) {
       await streamRef.current.loadTrack(currentTrack.src)
-      streamRef.current.play(serverPosition)
+      await streamRef.current.play(serverPosition)
     }
   }
 

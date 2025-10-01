@@ -36,7 +36,7 @@ class RadioStream {
     }
   }
 
-  play(startPosition = 0) {
+  async play(startPosition = 0) {
     try {
       if (!this.audioBuffer) {
         console.error('❌ Áudio não carregado')
@@ -50,7 +50,7 @@ class RadioStream {
       }
 
       // Sempre inicia nova música
-      this.startNewTrack(startPosition)
+      await this.startNewTrack(startPosition)
       return true
     } catch (error) {
       console.error('❌ Erro ao tocar:', error)
@@ -58,8 +58,14 @@ class RadioStream {
     }
   }
 
-  startNewTrack(startPosition = 0) {
+  async startNewTrack(startPosition = 0) {
     console.log('🎵 Iniciando nova música...')
+    
+    // Garantir que audioContext está ativo
+    if (this.audioContext.state === 'suspended') {
+      console.log('🔄 Resumindo audioContext...')
+      await this.audioContext.resume()
+    }
     
     // Criar analyser para visualização
     this.analyser = this.audioContext.createAnalyser()

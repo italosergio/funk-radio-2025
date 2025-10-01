@@ -43,13 +43,13 @@ class RadioStream {
         return false
       }
 
-      // Crossfade suave se já há uma música tocando
-      if (this.source && this.isPlaying) {
-        this.crossfadeToNew(startPosition)
-        return true
+      // Para música atual se existir
+      if (this.source) {
+        this.source.stop()
+        this.source.disconnect()
       }
 
-      // Primeira música ou não há música tocando
+      // Sempre inicia nova música
       this.startNewTrack(startPosition)
       return true
     } catch (error) {
@@ -59,6 +59,8 @@ class RadioStream {
   }
 
   startNewTrack(startPosition = 0) {
+    console.log('🎵 Iniciando nova música...')
+    
     // Criar analyser para visualização
     this.analyser = this.audioContext.createAnalyser()
     this.analyser.fftSize = 256
@@ -70,6 +72,9 @@ class RadioStream {
     // Conectar: source -> analyser -> gainNode -> destination
     this.source.connect(this.analyser)
     this.analyser.connect(this.gainNode)
+    
+    // Resetar gain para 1
+    this.gainNode.gain.value = 1
     
     this.source.onended = () => {
       console.log('🎵 Música terminou, aguardando próxima do servidor')
@@ -84,6 +89,7 @@ class RadioStream {
     this.isPlaying = true
     
     console.log(`▶️ Tocando a partir de ${Math.floor(startPosition)}s`)
+    console.log('✅ Música iniciada com sucesso!')
   }
 
   crossfadeToNew(startPosition = 0) {

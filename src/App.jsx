@@ -48,13 +48,24 @@ function App() {
     })
     
     socketRef.current.on('track-change', async (data) => {
+      console.log('🔄 Nova música recebida:', data.track.title)
       setCurrentTrack(data.track)
       setListeners(data.listeners)
       setServerPosition(0)
       
       if (radioStarted && streamRef.current) {
-        await streamRef.current.loadTrack(data.track.src)
-        streamRef.current.play(0)
+        try {
+          console.log('🎵 Carregando nova música...')
+          const loaded = await streamRef.current.loadTrack(data.track.src)
+          if (loaded) {
+            console.log('▶️ Tocando nova música...')
+            streamRef.current.play(0)
+          } else {
+            console.error('❌ Falha ao carregar música')
+          }
+        } catch (error) {
+          console.error('❌ Erro ao trocar música:', error)
+        }
       }
     })
     

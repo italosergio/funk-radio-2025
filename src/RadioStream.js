@@ -9,6 +9,7 @@ class RadioStream {
     this.offsetTime = 0
     this.nextSource = null
     this.nextGainNode = null
+    this.nextAnalyser = null
   }
 
   async init() {
@@ -93,6 +94,11 @@ class RadioStream {
     this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, now)
     this.gainNode.gain.linearRampToValueAtTime(0, now + crossfadeDuration)
     
+    // Criar novo analyser para nova música
+    this.nextAnalyser = this.audioContext.createAnalyser()
+    this.nextAnalyser.fftSize = 256
+    this.nextAnalyser.smoothingTimeConstant = 0.8
+    
     // Criar nova música com fade in
     this.nextGainNode = this.audioContext.createGain()
     this.nextGainNode.gain.setValueAtTime(0, now)
@@ -103,8 +109,8 @@ class RadioStream {
     this.nextSource.buffer = this.audioBuffer
     
     // Conectar nova música
-    this.nextSource.connect(this.analyser)
-    this.analyser.connect(this.nextGainNode)
+    this.nextSource.connect(this.nextAnalyser)
+    this.nextAnalyser.connect(this.nextGainNode)
     
     this.nextSource.onended = () => {
       console.log('🎵 Música terminou, aguardando próxima do servidor')
@@ -121,8 +127,10 @@ class RadioStream {
       }
       this.source = this.nextSource
       this.gainNode = this.nextGainNode
+      this.analyser = this.nextAnalyser
       this.nextSource = null
       this.nextGainNode = null
+      this.nextAnalyser = null
     }, crossfadeDuration * 1000)
     
     this.startTime = now

@@ -55,7 +55,7 @@ passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID || '1234567890-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com',
   clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'GOCSPX-abcdefghijklmnopqrstuvwxyz',
   callbackURL: process.env.NODE_ENV === 'production' 
-    ? 'https://funk-radio-2025.onrender.com/auth/google/callback'
+    ? 'https://radio-funk-2025.onrender.com/auth/google/callback'
     : 'http://localhost:3001/auth/google/callback'
 }, async (accessToken, refreshToken, profile, done) => {
   try {
@@ -145,7 +145,7 @@ app.get('/auth/google/callback',
   (req, res) => {
     // Redireciona para a página principal após login
     const redirectUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://funk-radio-2025.onrender.com'
+      ? 'https://radio-funk-2025.onrender.com'
       : 'http://localhost:5173'
     res.redirect(redirectUrl)
   }

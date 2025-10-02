@@ -14,16 +14,16 @@ import mongoose from 'mongoose'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-// Conectar ao MongoDB
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/funkradio'
+// Conectar ao MongoDB Atlas
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://funkradio:funkradio2025@cluster0.mongodb.net/funkradio?retryWrites=true&w=majority'
 
 mongoose.connect(MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 }).then(() => {
-  console.log('📦 MongoDB conectado:', MONGODB_URI.replace(/\/\/.*@/, '//***@'))
+  console.log('📦 MongoDB Atlas conectado')
 }).catch((error) => {
-  console.error('❌ Erro ao conectar MongoDB:', error.message)
+  console.error('❌ Erro ao conectar MongoDB Atlas:', error.message)
   console.log('⚠️ Continuando sem persistência de usuários')
 })
 

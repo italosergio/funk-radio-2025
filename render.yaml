@@ -7,3 +7,11 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: MONGODB_URI
+        value: mongodb+srv://funkradio:funkradio2025@cluster0.mongodb.net/funkradio?retryWrites=true&w=majority
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false

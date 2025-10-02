@@ -392,6 +392,12 @@
   z-index: 10000;
 }
 
+@media (max-width: 768px) {
+  .opening-login-bottom {
+    bottom: 80px;
+  }
+}
+
 .opening-login-btn {
   background: rgba(0, 0, 0, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -401,7 +407,7 @@
   cursor: pointer;
   font-size: 14px;
   font-weight: 400;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -411,6 +417,8 @@
   transform-style: preserve-3d;
   position: relative;
   overflow: hidden;
+  opacity: 0;
+  animation: fadeInLogin 1s ease-out 2.5s forwards;
 }
 
 .opening-login-btn::before {
@@ -496,9 +504,9 @@
 }
 
 .opening-logo {
-  font-size: 3rem;
+  font-size: 2.5rem;
   font-weight: 200;
-  letter-spacing: 8px;
+  letter-spacing: 6px;
   margin-bottom: 10px;
   opacity: 0;
   animation: fadeInUp 1s ease-out 0.5s forwards;
@@ -725,6 +733,11 @@
     transform: translate(2px, -5px);
   }
 }
+
+@keyframes fadeInLogin {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
 .download-btn {
   background: none;
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -806,8 +819,6 @@
     font-size: 0.8rem;
   }
   
-
-  
   .login-btn-top {
     padding: 6px 12px;
     font-size: 0.8rem;
@@ -821,5 +832,10 @@
     padding: 20px;
     gap: 15px;
     min-height: 300px;
+  }
+  
+  .opening-logo {
+    font-size: 2rem;
+    letter-spacing: 4px;
   }
 }

@@ -126,13 +126,9 @@ function App() {
     
     socketRef.current.on('connect', () => {
       setConnected(true)
-      console.log('📻 Conectado ao servidor')
     })
     
     socketRef.current.on('radio-state', async (data) => {
-      console.log('📡 Estado da rádio recebido:', data.track.title)
-      console.log('🎤 Artista:', data.track.artist || 'Não encontrado')
-      console.log('🇺️ Capa da música:', data.track.cover ? 'Presente' : 'Ausente')
       setCurrentTrack(data.track)
       setListeners(data.listeners)
       setServerPosition(data.currentPosition)
@@ -150,29 +146,22 @@ function App() {
     })
     
     socketRef.current.on('track-change', async (data) => {
-      console.log('🔄 Nova música recebida:', data.track.title)
       setCurrentTrack(data.track)
       setListeners(data.listeners)
       setServerPosition(0)
       
-      // SEMPRE tenta tocar nova música, independente do estado
       if (streamRef.current) {
         try {
-          console.log('🎵 Carregando nova música...')
           const loaded = await streamRef.current.loadTrack(data.track.src)
           if (loaded) {
-            console.log('▶️ Forçando reprodução da nova música...')
             const played = await streamRef.current.play(0)
             if (played) {
-              console.log('✅ Nova música tocando!')
               updateMediaSession(data.track)
               
-              // Aplicar estado de mute se necessário
               if (isMuted && streamRef.current) {
                 streamRef.current.mute()
               }
               
-              // Sincronizar audio element
               if (audioRef.current) {
                 audioRef.current.currentTime = 0
                 if (!isMuted) {
@@ -181,17 +170,11 @@ function App() {
                   audioRef.current.pause()
                 }
               }
-            } else {
-              console.error('❌ Falha ao tocar nova música')
             }
-          } else {
-            console.error('❌ Falha ao carregar música')
           }
         } catch (error) {
-          console.error('❌ Erro ao trocar música:', error)
+          console.error('Erro ao trocar música:', error)
         }
-      } else {
-        console.error('❌ StreamRef não existe!')
       }
     })
     
@@ -200,17 +183,12 @@ function App() {
     })
     
     socketRef.current.on('sync-time', async (data) => {
-      console.log('🔄 Recebeu sync-time:', Math.floor(data.currentPosition))
       setServerPosition(data.currentPosition)
       if (streamRef.current && radioStarted && currentTrack) {
-        console.log('🎵 Reconectando stream...')
-        
         if (!streamRef.current.audioBuffer) {
           await streamRef.current.loadTrack(currentTrack.src)
         }
-        
         await streamRef.current.play(data.currentPosition)
-        console.log('✅ Stream reconectado!')
       }
     })
     
@@ -282,9 +260,7 @@ function App() {
         streamRef.current.mute()
       } else {
         // Inicia timer se usuário logado e música tocando
-        console.log('🎵 Música iniciada, usuário:', user ? 'logado' : 'não logado')
         if (user) {
-          console.log('🚀 Tentando iniciar timer automaticamente')
           startListeningTimer()
         }
       }
@@ -400,7 +376,7 @@ function App() {
         <div className="opening-tesseract"></div>
         
         <div className="opening-content">
-          <div className="opening-logo">RÁDIO FUNK</div>
+          <div className="opening-logo">FUNK RADIO</div>
           <div className="opening-year">2025</div>
           
           {/* Mensagem de boas-vindas se logado */}
@@ -415,17 +391,13 @@ function App() {
           ) : !currentTrack ? (
             <div className="opening-status">{t('loading')}</div>
           ) : (
-            <>
-              <button onClick={startRadio} className="opening-play-btn">
-                <HiPlay />
-              </button>
-              
-
-            </>
+            <button onClick={startRadio} className="opening-play-btn">
+              <HiPlay />
+            </button>
           )}
         </div>
         
-        {/* Botão de login na parte inferior */}
+        {/* Botão de login após apresentação */}
         {!user && connected && currentTrack && (
           <div className="opening-login-bottom">
             <button 
@@ -433,7 +405,6 @@ function App() {
                 const serverUrl = process.env.NODE_ENV === 'production' 
                   ? window.location.origin 
                   : 'http://localhost:3001'
-
                 window.location.href = `${serverUrl}/auth/google`
               }} 
               className="opening-login-btn"
@@ -524,11 +495,7 @@ function App() {
               <img 
                 src={currentTrack.cover} 
                 alt={`${currentTrack.title} cover`}
-                onLoad={() => console.log('Capa carregada com sucesso')}
-                onError={() => {
-                  console.log('Erro ao carregar capa')
-                  console.log('URL da capa:', currentTrack.cover)
-                }}
+
               />
             ) : (
               <div className="album-placeholder">

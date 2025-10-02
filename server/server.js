@@ -135,12 +135,24 @@ if (process.env.NODE_ENV === 'production') {
   })
 }
 
+// Rota de teste
+app.get('/auth/test', (req, res) => {
+  console.log('✅ Rota de teste funcionando')
+  res.json({ message: 'OAuth test OK', env: process.env.NODE_ENV })
+})
+
 // Rotas de autenticação
 app.get('/auth/google', (req, res, next) => {
   console.log('🔍 Rota /auth/google acessada')
   console.log('🔑 CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'OK' : 'MISSING')
   console.log('🔐 CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'OK' : 'MISSING')
-  next()
+  
+  try {
+    next()
+  } catch (error) {
+    console.error('❌ Erro antes do Passport:', error)
+    res.status(500).json({ error: 'Erro no servidor' })
+  }
 }, passport.authenticate('google', {
   scope: ['profile', 'email']
 }))

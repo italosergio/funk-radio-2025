@@ -42,9 +42,7 @@ const UserSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', UserSchema)
 
-// Debug: verificar se as variáveis estão carregando
-console.log('🔑 GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Configurado' : 'Não encontrado')
-console.log('🔐 GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'Configurado' : 'Não encontrado')
+
 
 const app = express()
 
@@ -79,19 +77,19 @@ passport.use(new GoogleStrategy({
       try {
         const dbUser = new User(user)
         await dbUser.save()
-        console.log('✨ Novo usuário criado no DB:', user.name)
+
       } catch (dbError) {
-        console.log('⚠️ Usando usuário temporário:', user.name)
+
       }
     } else {
       user.lastLogin = new Date()
       await user.save().catch(() => {})
-      console.log('🔄 Usuário carregado:', user.name)
+
     }
     
     done(null, user)
   } catch (error) {
-    console.error('Erro no OAuth:', error)
+
     done(error, null)
   }
 }))
@@ -124,48 +122,16 @@ app.use(passport.session())
 // Serve arquivos de música
 app.use('/music', express.static(path.join(__dirname, '../public/music')))
 
-// Serve arquivos estáticos do build em produção
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../dist')))
-  
-  app.get('*', (req, res) => {
-    if (!req.path.startsWith('/socket.io') && !req.path.startsWith('/auth') && !req.path.startsWith('/music')) {
-      res.sendFile(path.join(__dirname, '../dist/index.html'))
-    }
-  })
-}
 
-// Rota de teste
-app.get('/auth/test', (req, res) => {
-  console.log('✅ Rota de teste funcionando')
-  res.json({ message: 'OAuth test OK', env: process.env.NODE_ENV })
-})
 
 // Rotas de autenticação
-app.get('/auth/google', (req, res, next) => {
-  console.log('🔍 Rota /auth/google acessada')
-  console.log('🔑 CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'OK' : 'MISSING')
-  console.log('🔐 CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'OK' : 'MISSING')
-  
-  try {
-    next()
-  } catch (error) {
-    console.error('❌ Erro antes do Passport:', error)
-    res.status(500).json({ error: 'Erro no servidor' })
-  }
-}, passport.authenticate('google', {
+app.get('/auth/google', passport.authenticate('google', {
   scope: ['profile', 'email']
 }))
 
 app.get('/auth/google/callback', 
-  (req, res, next) => {
-    console.log('🔄 Callback do Google recebido')
-    next()
-  },
   passport.authenticate('google', { failureRedirect: '/auth/error' }),
   (req, res) => {
-    console.log('✅ Login bem-sucedido, redirecionando...')
-    // Redireciona para a página principal após login
     const redirectUrl = process.env.NODE_ENV === 'production' 
       ? 'https://radio-funk-2025.onrender.com'
       : 'http://localhost:5173'
@@ -188,7 +154,7 @@ app.get('/auth/listeners', async (req, res) => {
       .limit(20)
     res.json({ listeners })
   } catch (error) {
-    console.error('Erro ao buscar ouvintes:', error)
+
     res.json({ listeners: [] })
   }
 })
@@ -211,13 +177,13 @@ app.post('/auth/update-time', async (req, res) => {
     if (user) {
       user.listeningTime = listeningTime
       await user.save()
-      console.log('💾 Tempo salvo no DB para', user.name, ':', listeningTime, 'segundos')
+
       res.json({ success: true, listeningTime })
     } else {
       res.status(404).json({ error: 'Usuário não encontrado' })
     }
   } catch (error) {
-    console.error('Erro ao salvar tempo:', error)
+
     res.status(500).json({ error: 'Erro interno' })
   }
 })
@@ -226,6 +192,17 @@ app.post('/auth/update-time', async (req, res) => {
 app.get('/', (req, res) => {
   res.json({ message: 'Funk Radio Server funcionando!', status: 'ok' })
 })
+
+// Serve arquivos estáticos do build em produção (DEPOIS das rotas)
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../dist')))
+  
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/socket.io') && !req.path.startsWith('/auth') && !req.path.startsWith('/music')) {
+      res.sendFile(path.join(__dirname, '../dist/index.html'))
+    }
+  })
+}
 
 const server = createServer(app)
 const io = new Server(server, {
@@ -256,8 +233,7 @@ async function loadPlaylist() {
           title = metadata.common.title || title
           artist = metadata.common.artist || metadata.common.albumartist || metadata.common.artists?.[0] || null
           duration = metadata.format.duration
-          console.log(`🎤 ${file}: titulo=${title}, artista=${artist}, duração=${Math.floor(duration)}s`)
-          console.log(`📋 Metadados disponiveis:`, Object.keys(metadata.common))
+
           
           // Extrair capa dos metadados
           if (metadata.common.picture && metadata.common.picture.length > 0) {
@@ -266,15 +242,15 @@ async function loadPlaylist() {
             if (picture.data.length < 500000) {
               const base64 = Buffer.from(picture.data).toString('base64')
               cover = `data:${picture.format};base64,${base64}`
-              console.log(`🇺️ Capa encontrada para ${file}: ${picture.format} (${Math.round(picture.data.length/1024)}KB)`)
+
             } else {
-              console.log(`⚠️ Capa muito grande para ${file}: ${Math.round(picture.data.length/1024)}KB`)
+
             }
           } else {
-            console.log(`❌ Nenhuma capa encontrada para ${file}`)
+
           }
         } catch (metaError) {
-          console.log(`⚠️ Erro ao ler metadados de ${file}:`, metaError.message)
+
         }
         
         return {
@@ -289,9 +265,9 @@ async function loadPlaylist() {
       })
     )
     
-    console.log(`📻 Playlist carregada: ${playlist.length} músicas`)
+
   } catch (error) {
-    console.log('❌ Erro ao carregar playlist:', error.message)
+
   }
 }
 
@@ -311,7 +287,7 @@ function nextTrack() {
     const track = playlist[currentTrack]
     const durationMs = track.duration * 1000
     
-    console.log(`🎵 Tocando: ${track.title} (${Math.floor(track.duration)}s)`)
+
     
     // Envia nova música para todos
     io.emit('track-change', {
@@ -323,7 +299,7 @@ function nextTrack() {
     
     // Agenda próxima música na duração completa
     currentTrackTimer = setTimeout(nextTrack, durationMs)
-    console.log(`⏰ Próxima música em ${Math.floor(durationMs/1000)}s`)
+
   }
 }
 
@@ -338,12 +314,12 @@ function getCurrentPosition() {
 // Conexões WebSocket
 io.on('connection', (socket) => {
   listeners++
-  console.log(`👤 Ouvinte conectado (${listeners} online)`)
+
   
   // Envia estado atual com posição da música
   if (playlist.length > 0) {
     const position = getCurrentPosition()
-    console.log(`👤 Novo ouvinte conectou na posição ${Math.floor(position)}s`)
+
     socket.emit('radio-state', {
       track: playlist[currentTrack],
       listeners,
@@ -369,22 +345,22 @@ io.on('connection', (socket) => {
   })
   
   socket.on('sync-position', () => {
-    console.log('📶 Recebeu pedido de sync-position')
+
     if (playlist.length > 0) {
       const position = getCurrentPosition()
-      console.log(`🔄 Enviando sync-time na posição ${Math.floor(position)}s`)
+
       socket.emit('sync-time', {
         currentPosition: position,
         serverTime: Date.now()
       })
     } else {
-      console.log('❌ Playlist vazia, não pode sincronizar')
+
     }
   })
   
   socket.on('disconnect', () => {
     listeners--
-    console.log(`👤 Ouvinte desconectou (${listeners} online)`)
+
     io.emit('listeners-update', listeners)
   })
 })
@@ -394,18 +370,17 @@ await loadPlaylist()
 if (playlist.length > 0) {
   trackStartTime = Date.now()
   const firstTrack = playlist[currentTrack]
-  console.log(`🎵 Iniciando stream: ${firstTrack.title} (${Math.floor(firstTrack.duration)}s)`)
+
   
   // Agenda primeira troca na duração completa
   const firstDelay = firstTrack.duration * 1000
   currentTrackTimer = setTimeout(nextTrack, firstDelay)
-  console.log(`⏰ Primeira troca em ${Math.floor(firstDelay/1000)}s`)
+
 }
 
 const PORT = process.env.PORT || 3001
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Servidor de streaming rodando na porta ${PORT}`)
-  console.log('🎵 Rádio tocando automaticamente!')
+
 })
 
 // Músicas agora trocam automaticamente baseadas na duração real

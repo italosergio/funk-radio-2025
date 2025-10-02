@@ -441,9 +441,7 @@ function App() {
                 const serverUrl = process.env.NODE_ENV === 'production' 
                   ? window.location.origin 
                   : 'http://localhost:3001'
-                console.log('🔗 URL construída:', `${serverUrl}/auth/google`)
-                console.log('🌍 NODE_ENV:', process.env.NODE_ENV)
-                console.log('🏠 window.location.origin:', window.location.origin)
+
                 window.location.href = `${serverUrl}/auth/google`
               }} 
               className="opening-login-btn"

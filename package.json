@@ -4,13 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "./scripts/dev.sh && npm run client",
+    "client": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "cd server && npm start",
-    "radio": "concurrently \"npm run server\" \"npm run dev\"",
-    "start": "node start.js",
+    "radio": "concurrently \"npm run server\" \"npm run client\"",
+    "start": "docker-compose up --build",
     "vercel-build": "npm run build"
   },
   "dependencies": {

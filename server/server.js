@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import express from 'express'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
@@ -9,59 +10,103 @@ import session from 'express-session'
 import cors from 'cors'
 import passport from 'passport'
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20'
+import mongoose from 'mongoose'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+// Conectar ao MongoDB
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/funkradio'
+
+mongoose.connect(MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => {
+  console.log('📦 MongoDB conectado:', MONGODB_URI.replace(/\/\/.*@/, '//***@'))
+}).catch((error) => {
+  console.error('❌ Erro ao conectar MongoDB:', error.message)
+  console.log('⚠️ Continuando sem persistência de usuários')
+})
+
+// Schema do usuário
+const UserSchema = new mongoose.Schema({
+  googleId: String,
+  email: String,
+  name: String,
+  picture: String,
+  given_name: String,
+  family_name: String,
+  listeningTime: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now },
+  lastLogin: { type: Date, default: Date.now }
+})
+
+const User = mongoose.model('User', UserSchema)
+
+// Debug: verificar se as variáveis estão carregando
+console.log('🔑 GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Configurado' : 'Não encontrado')
+console.log('🔐 GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'Configurado' : 'Não encontrado')
+
 const app = express()
 
-// Sistema de usuários em memória (simples)
-const users = new Map()
+// Sistema de usuários agora usa MongoDB
 
 // Configuração do Passport
 passport.use(new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID || 'demo-client-id',
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'demo-client-secret',
-  callbackURL: "/auth/google/callback"
+  clientID: process.env.GOOGLE_CLIENT_ID || '1234567890-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com',
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'GOCSPX-abcdefghijklmnopqrstuvwxyz',
+  callbackURL: process.env.NODE_ENV === 'production' 
+    ? 'https://funk-radio-2025.onrender.com/auth/google/callback'
+    : 'http://localhost:3001/auth/google/callback'
 }, async (accessToken, refreshToken, profile, done) => {
   try {
-    let user = users.get(profile.id)
+    // Tenta usar MongoDB primeiro
+    let user = await User.findOne({ googleId: profile.id }).catch(() => null)
     
-    if (user) {
+    if (!user) {
+      user = {
+        googleId: profile.id,
+        email: profile.emails[0].value,
+        name: profile.displayName,
+        picture: profile.photos[0].value,
+        given_name: profile._json.given_name,
+        family_name: profile._json.family_name,
+        listeningTime: 0,
+        createdAt: new Date(),
+        lastLogin: new Date()
+      }
+      
+      // Tenta salvar no MongoDB
+      try {
+        const dbUser = new User(user)
+        await dbUser.save()
+        console.log('✨ Novo usuário criado no DB:', user.name)
+      } catch (dbError) {
+        console.log('⚠️ Usando usuário temporário:', user.name)
+      }
+    } else {
       user.lastLogin = new Date()
-      user.isOnline = true
-      return done(null, user)
+      await user.save().catch(() => {})
+      console.log('🔄 Usuário carregado:', user.name)
     }
     
-    user = {
-      id: profile.id,
-      googleId: profile.id,
-      email: profile.emails[0].value,
-      name: profile.displayName,
-      picture: profile.photos[0].value,
-      locale: profile._json.locale,
-      verified_email: profile._json.verified_email,
-      given_name: profile._json.given_name,
-      family_name: profile._json.family_name,
-      createdAt: new Date(),
-      lastLogin: new Date(),
-      isOnline: true
-    }
-    
-    users.set(profile.id, user)
-    console.log('👤 Novo usuário registrado:', user.name)
     done(null, user)
   } catch (error) {
+    console.error('Erro no OAuth:', error)
     done(error, null)
   }
 }))
 
 passport.serializeUser((user, done) => {
-  done(null, user.id)
+  done(null, user.googleId)
 })
 
-passport.deserializeUser((id, done) => {
-  const user = users.get(id)
-  done(null, user)
+passport.deserializeUser(async (googleId, done) => {
+  try {
+    const user = await User.findOne({ googleId })
+    done(null, user)
+  } catch (error) {
+    done(error, null)
+  }
 })
 
 // Middleware
@@ -76,9 +121,19 @@ app.use(session({
 app.use(passport.initialize())
 app.use(passport.session())
 
-// Serve arquivos estáticos do build
-app.use(express.static(path.join(__dirname, '../dist')))
+// Serve arquivos de música
 app.use('/music', express.static(path.join(__dirname, '../public/music')))
+
+// Serve arquivos estáticos do build em produção
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../dist')))
+  
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/socket.io') && !req.path.startsWith('/auth') && !req.path.startsWith('/music')) {
+      res.sendFile(path.join(__dirname, '../dist/index.html'))
+    }
+  })
+}
 
 // Rotas de autenticação
 app.get('/auth/google', passport.authenticate('google', {
@@ -86,9 +141,13 @@ app.get('/auth/google', passport.authenticate('google', {
 }))
 
 app.get('/auth/google/callback', 
-  passport.authenticate('google', { failureRedirect: '/' }),
+  passport.authenticate('google', { failureRedirect: '/auth/error' }),
   (req, res) => {
-    res.redirect('/?login=success')
+    // Redireciona para a página principal após login
+    const redirectUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://funk-radio-2025.onrender.com'
+      : 'http://localhost:5173'
+    res.redirect(redirectUrl)
   }
 )
 
@@ -100,17 +159,48 @@ app.get('/auth/user', (req, res) => {
   }
 })
 
+app.get('/auth/listeners', async (req, res) => {
+  try {
+    const listeners = await User.find({}, 'name picture listeningTime lastLogin').sort({ lastLogin: -1 }).limit(50)
+    res.json({ listeners })
+  } catch (error) {
+    console.error('Erro ao buscar ouvintes:', error)
+    res.json({ listeners: [] })
+  }
+})
+
 app.post('/auth/logout', (req, res) => {
   req.logout(() => {
     res.json({ success: true })
   })
 })
 
-// Rota catch-all para SPA
-app.get('*', (req, res) => {
-  if (!req.path.startsWith('/socket.io') && !req.path.startsWith('/auth')) {
-    res.sendFile(path.join(__dirname, '../dist/index.html'))
+app.post('/auth/update-time', async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Não autenticado' })
   }
+  
+  try {
+    const { listeningTime } = req.body
+    const user = await User.findOne({ googleId: req.user.googleId })
+    
+    if (user) {
+      user.listeningTime = listeningTime
+      await user.save()
+      console.log('💾 Tempo salvo no DB para', user.name, ':', listeningTime, 'segundos')
+      res.json({ success: true, listeningTime })
+    } else {
+      res.status(404).json({ error: 'Usuário não encontrado' })
+    }
+  } catch (error) {
+    console.error('Erro ao salvar tempo:', error)
+    res.status(500).json({ error: 'Erro interno' })
+  }
+})
+
+// Rota de teste
+app.get('/', (req, res) => {
+  res.json({ message: 'Funk Radio Server funcionando!', status: 'ok' })
 })
 
 const server = createServer(app)

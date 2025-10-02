@@ -46,7 +46,13 @@ git clone https://github.com/italosergio/funk-radio-2025.git
 cd funk-radio-2025
 ```
 
-2. **Instale as dependências**
+2. **Configure o ambiente (primeira vez)**
+```bash
+./setup.sh
+# Se necessário, faça logout/login ou execute: newgrp docker
+```
+
+3. **Instale as dependências**
 ```bash
 # Dependências do frontend
 npm install

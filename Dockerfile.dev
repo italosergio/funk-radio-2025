@@ -1,0 +1,22 @@
+FROM node:18-alpine
+
+# Instalar curl para health check
+RUN apk add --no-cache curl
+
+WORKDIR /app
+
+# Copiar package.json do frontend
+COPY package*.json ./
+RUN npm install
+
+# Copiar package.json do servidor
+COPY server/package*.json ./server/
+RUN cd server && npm install
+
+# Copiar código
+COPY . .
+
+EXPOSE 3001
+
+# Comando de desenvolvimento
+CMD ["npm", "run", "server"]

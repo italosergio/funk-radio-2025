@@ -1,0 +1,15 @@
+# Override para desenvolvimento local
+version: '3.8'
+
+services:
+  mongodb:
+    environment:
+      - NODE_ENV=development
+    
+  dev-server:
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/server/node_modules
+    environment:
+      - NODE_ENV=development

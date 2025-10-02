@@ -201,11 +201,14 @@
   color: white;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
   .user-profile-modal {
-    top: 70px;
-    right: 20px;
-    width: 280px;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    right: auto;
+    transform: translate(-50%, -50%);
+    width: 300px;
     padding: 20px;
   }
 }

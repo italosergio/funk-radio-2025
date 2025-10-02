@@ -4,8 +4,14 @@ import { HiSwitchHorizontal } from 'react-icons/hi'
 const WaveVisualizer = ({ radioStream, isPlaying }) => {
   const canvasRef = useRef(null)
   const animationRef = useRef(null)
-  const [effectType, setEffectType] = useState(1)
-  const [is3D, setIs3D] = useState(false)
+  const [effectType, setEffectType] = useState(() => {
+    const saved = localStorage.getItem('radioEffectType')
+    return saved ? parseInt(saved) : 1
+  })
+  const [is3D, setIs3D] = useState(() => {
+    const saved = localStorage.getItem('radioIs3D')
+    return saved ? JSON.parse(saved) : false
+  })
   
   const effectNames = [
     '2D Simétricas', '2D Centralizadas', '2D Circulares',
@@ -258,9 +264,13 @@ const WaveVisualizer = ({ radioStream, isPlaying }) => {
     if (nextIndex < 3) {
       setIs3D(false)
       setEffectType(nextIndex)
+      localStorage.setItem('radioIs3D', 'false')
+      localStorage.setItem('radioEffectType', nextIndex.toString())
     } else {
       setIs3D(true)
       setEffectType(nextIndex - 3)
+      localStorage.setItem('radioIs3D', 'true')
+      localStorage.setItem('radioEffectType', (nextIndex - 3).toString())
     }
   }
 
@@ -277,25 +287,9 @@ const WaveVisualizer = ({ radioStream, isPlaying }) => {
       <button 
         onClick={changeEffect}
         className="effect-btn"
-        style={{
-          position: 'absolute',
-          top: '20px',
-          left: '20px',
-          background: 'rgba(0, 0, 0, 0.5)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          color: 'white',
-          padding: '8px 12px',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          fontSize: '0.8rem',
-          zIndex: 10,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px'
-        }}
       >
         <HiSwitchHorizontal />
-        <span>{effectNames[is3D ? effectType + 3 : effectType]}</span>
+        <span className="effect-name">{effectNames[is3D ? effectType + 3 : effectType]}</span>
       </button>
     </>
   )

@@ -68,13 +68,7 @@ function App() {
       listeningIntervalRef.current = setInterval(() => {
         setListeningTime(prev => {
           const newTime = prev + 1
-          if (newTime % 5 === 0) { // Log a cada 5s para não poluir
-            console.log('⏱️ Tempo atualizado:', newTime, 'segundos')
-          }
-          
-          // Salva no servidor a cada segundo
           saveListeningTime(newTime)
-          
           return newTime
         })
       }, 1000)
@@ -109,8 +103,6 @@ function App() {
         credentials: 'include',
         body: JSON.stringify({ listeningTime: time })
       })
-      
-      console.log('💾 Tempo salvo:', time, 'segundos')
     } catch (error) {
       console.error('Erro ao salvar tempo:', error)
     }
@@ -485,7 +477,6 @@ function App() {
         <WaveVisualizer 
           radioStream={streamRef.current} 
           isPlaying={!isMuted && radioStarted}
-
         />
       </div>
       
@@ -494,11 +485,11 @@ function App() {
           <div className="live-dot"></div>
           {t('live')}
         </div>
-        <div className="listeners-count" onClick={() => setShowListenersModal(true)}>
+        <div className="listeners-count">
           <HiUsers />
           {listeners} {t('listeners')}
         </div>
-        {user && (
+        {user ? (
           <div className="user-avatar-small" onClick={() => setShowUserProfile(true)}>
             {user.picture ? (
               <img src={user.picture} alt={user.name} />
@@ -506,11 +497,26 @@ function App() {
               <div className="avatar-placeholder-small">{user.name?.charAt(0)}</div>
             )}
           </div>
+        ) : (
+          <button 
+            onClick={() => {
+              const serverUrl = process.env.NODE_ENV === 'production' 
+                ? window.location.origin 
+                : 'http://localhost:3001'
+              window.location.href = `${serverUrl}/auth/google`
+            }} 
+            className="login-btn-top"
+          >
+            <FaGoogle />
+            Entrar
+          </button>
         )}
       </div>
 
       <div className="radio-container">
         <div className="logo">{t('appName')}</div>
+        
+
         
         <div className="music-info">
           <div className="album-cover">
@@ -549,9 +555,7 @@ function App() {
             {isMuted ? <HiVolumeOff /> : <HiVolumeUp />}
           </button>
         </div>
-
       </div>
-      
       <LoginModal 
         isOpen={showLoginModal} 
         onClose={() => setShowLoginModal(false)} 

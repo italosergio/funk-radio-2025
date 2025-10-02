@@ -188,10 +188,7 @@ app.post('/auth/update-time', async (req, res) => {
   }
 })
 
-// Rota de teste
-app.get('/', (req, res) => {
-  res.json({ message: 'Funk Radio Server funcionando!', status: 'ok' })
-})
+
 
 // Serve arquivos estáticos do build em produção (DEPOIS das rotas)
 if (process.env.NODE_ENV === 'production') {

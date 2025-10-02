@@ -136,13 +136,23 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Rotas de autenticação
-app.get('/auth/google', passport.authenticate('google', {
+app.get('/auth/google', (req, res, next) => {
+  console.log('🔍 Rota /auth/google acessada')
+  console.log('🔑 CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'OK' : 'MISSING')
+  console.log('🔐 CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'OK' : 'MISSING')
+  next()
+}, passport.authenticate('google', {
   scope: ['profile', 'email']
 }))
 
 app.get('/auth/google/callback', 
+  (req, res, next) => {
+    console.log('🔄 Callback do Google recebido')
+    next()
+  },
   passport.authenticate('google', { failureRedirect: '/auth/error' }),
   (req, res) => {
+    console.log('✅ Login bem-sucedido, redirecionando...')
     // Redireciona para a página principal após login
     const redirectUrl = process.env.NODE_ENV === 'production' 
       ? 'https://radio-funk-2025.onrender.com'
@@ -161,7 +171,9 @@ app.get('/auth/user', (req, res) => {
 
 app.get('/auth/listeners', async (req, res) => {
   try {
-    const listeners = await User.find({}, 'name picture listeningTime lastLogin').sort({ lastLogin: -1 }).limit(50)
+    const listeners = await User.find({}, 'name picture listeningTime lastLogin')
+      .sort({ listeningTime: -1 })
+      .limit(20)
     res.json({ listeners })
   } catch (error) {
     console.error('Erro ao buscar ouvintes:', error)
